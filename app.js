@@ -5,39 +5,69 @@ const { handleLeadChange } = require('./logicService');
 
 const app = express();
 
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 app.get('/', (req, res) => {
     res.json({
         status: 'ok',
-        time: new Date().toISOString()
+        time: new Date().toISOString(),
+        env: process.env.NODE_ENV
     });
 });
 
 app.post('/webhook', async (req, res) => {
     console.log("=== ПОЛУЧЕН ВЕБХУК ===");
-    console.log("ДАННЫЕ ТЕЛА:", JSON.stringify(req.body, null, 2));
+
+    const body = req.body;
+
     try {
-        const params = req.body;
-        let type = '';
 
-        if (params['leads[update][0][id]']) type = 'update';
-        else if (params['leads[add][0][id]']) type = 'add';
+        const leadsUpdate = body.leads?.update || body.leads?.add;
 
-        if (!type) return res.status(200).send('ok');
+        if (!leadsUpdate || !leadsUpdate[0]) {
+            console.log("⚠️ Вебхук не содержит данных о сделках");
+            return res.status(200).send('ok');
+        }
 
-        const leadId = params[`leads[${type}][0][id]`];
-        const pipelineId = parseInt(params[`leads[${type}][0][pipeline_id]`]);
+        const lead = leadsUpdate[0];
+        const leadId = lead.id;
+        const pipelineId = parseInt(lead.pipeline_id);
 
-        const customFields = extractCustomFields(params, type);
+        console.log(`🔎 Обработка сделки #${leadId} в воронке ${pipelineId}`);
 
-        await handleLeadChange(leadId, pipelineId, customFields);
+
+        const customFields = { uzs: null, rub: null, kzt: null };
+
+        if (lead.custom_fields) {
+            lead.custom_fields.forEach(field => {
+                const fieldId = parseInt(field.id);
+                const rawValue = field.values?.[0]?.value;
+                const value = parseFloat(String(rawValue).replace(/[^0-9.]/g, ''));
+
+                if (fieldId === config.fields.UZS) customFields.uzs = value;
+                if (fieldId === config.fields.RUB) customFields.rub = value;
+                if (fieldId === config.fields.KZT) customFields.kzt = value;
+            });
+        }
+
+        console.log("📊 Извлеченные поля:", customFields);
+
+
+        if (customFields.uzs || customFields.rub || customFields.kzt) {
+
+            await handleLeadChange(leadId, pipelineId, customFields);
+            console.log("✅ Логика успешно выполнена");
+        } else {
+            console.log("ℹ️ Поля валют пусты, расчет не требуется");
+        }
 
         res.status(200).send('ok');
     } catch (err) {
-        console.error("Webhook error:", err.message);
-        res.status(200).send('error');
+        console.error("❌ Ошибка вебхука:", err);
+
+        res.status(500).json({ error: err.message });
     }
 });
 
@@ -49,25 +79,6 @@ app.get('/cron/update-rates', async (req, res) => {
         res.status(500).send(err.message);
     }
 });
-
-function extractCustomFields(params, type) {
-    const fields = { uzs: null, rub: null, kzt: null };
-    const prefix = `leads[${type}][0][custom_fields_values]`;
-
-    for (let key in params) {
-        if (key.includes(prefix) && key.includes('[id]')) {
-            const fieldId = parseInt(params[key]);
-            const valueKey = key.replace('[id]', '[values][0][value]');
-            const value = parseFloat(params[valueKey]);
-
-            if (fieldId === config.fields.UZS) fields.uzs = value;
-            if (fieldId === config.fields.RUB) fields.rub = value;
-            if (fieldId === config.fields.KZT) fields.kzt = value;
-        }
-    }
-    return fields;
-}
-
 
 if (process.env.NODE_ENV !== 'production') {
     app.listen(config.port, () => {
