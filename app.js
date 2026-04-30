@@ -16,6 +16,8 @@ app.get('/', (req, res) => {
 });
 
 app.post('/webhook', async (req, res) => {
+    console.log("=== ПОЛУЧЕН ВЕБХУК ===");
+    console.log("ДАННЫЕ ТЕЛА:", JSON.stringify(req.body, null, 2));
     try {
         const params = req.body;
         let type = '';
@@ -66,6 +68,11 @@ function extractCustomFields(params, type) {
     return fields;
 }
 
-app.listen(config.port, () => {
-    console.log(`Server started on port ${config.port}`);
-});
+
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(config.port, () => {
+        console.log(`Локальный сервер запущен на порту ${config.port}`);
+    });
+}
+
+module.exports = app;
