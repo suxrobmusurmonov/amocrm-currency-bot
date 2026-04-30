@@ -2,7 +2,6 @@ const axios = require('axios');
 const supabase = require('./supabaseClient');
 const config = require('./config');
 
-
 async function getSettings() {
     const { data, error } = await supabase
         .from('settings')
@@ -14,7 +13,6 @@ async function getSettings() {
     return data;
 }
 
-
 async function updateSettings(fields) {
     const { error } = await supabase
         .from('settings')
@@ -23,7 +21,6 @@ async function updateSettings(fields) {
 
     if (error) throw new Error('Ошибка обновления настроек: ' + error.message);
 }
-
 
 async function refreshAmoToken(refreshToken) {
     const url = `https://${config.amo.subdomain}.amocrm.ru/oauth2/access_token`;
@@ -38,7 +35,6 @@ async function refreshAmoToken(refreshToken) {
     try {
         const response = await axios.post(url, payload);
         const data = response.data;
-
 
         const newExpiresAt = new Date(Date.now() + data.expires_in * 1000).toISOString();
 
@@ -56,21 +52,24 @@ async function refreshAmoToken(refreshToken) {
     }
 }
 
-
 async function getValidAccessToken() {
+    
+    if (config.amo.accessToken) {
+        return config.amo.accessToken;
+    }
+
+    
     const settings = await getSettings();
     const now = new Date();
     const expiresAt = new Date(settings.token_expires_at);
 
-
     if (now.getTime() + 5 * 60 * 1000 > expiresAt.getTime()) {
-        console.log('⏳ Токен истекает, запускаем обновление...');
+        console.log('⏳ Токен в базе истекает, запускаем обновление...');
         return await refreshAmoToken(settings.amocrm_refresh_token);
     }
 
     return settings.amocrm_access_token;
 }
-
 
 async function amoRequest(method, path, body = null) {
     const token = await getValidAccessToken();
