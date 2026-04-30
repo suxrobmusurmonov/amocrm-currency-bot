@@ -30,7 +30,7 @@ async function fetchAndStoreRates() {
         ];
 
         for (const rateObj of ratesToSave) {
-            // Используем возможности SDK: upsert автоматически обновит запись, если дата и валюта совпадут
+           
             const { error } = await supabase
                 .from('daily_rates')
                 .upsert(rateObj, { onConflict: 'date,base,quote' });
