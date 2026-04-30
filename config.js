@@ -4,14 +4,13 @@ const requiredEnv = [
     'SUPABASE_URL',
     'SUPABASE_KEY',
     'AMOCRM_SUBDOMAIN',
-    'AMOCRM_CLIENT_ID',
-    'AMOCRM_CLIENT_SECRET'
+    'AMOCRM_ACCESS_TOKEN'
 ];
 
 requiredEnv.forEach(name => {
     if (!process.env[name]) {
         console.error(`❌ Ошибка: Переменная окружения ${name} не задана`);
-        process.exit(1);
+
     }
 });
 
@@ -23,6 +22,7 @@ module.exports = {
     },
     amo: {
         subdomain: process.env.AMOCRM_SUBDOMAIN,
+        accessToken: process.env.AMOCRM_ACCESS_TOKEN,
         clientId: process.env.AMOCRM_CLIENT_ID,
         clientSecret: process.env.AMOCRM_CLIENT_SECRET,
         redirectUri: process.env.AMOCRM_REDIRECT_URI
