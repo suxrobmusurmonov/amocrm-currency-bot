@@ -10,7 +10,7 @@ const requiredEnv = [
 
 requiredEnv.forEach(name => {
     if (!process.env[name]) {
-        console.error(`❌ Ошибка: Переменная окружения ${name} не задана в .env`);
+        console.error(`❌ Ошибка: Переменная окружения ${name} не задана`);
         process.exit(1);
     }
 });
@@ -31,5 +31,9 @@ module.exports = {
         UZS: 1597573,
         RUB: 1597575,
         KZT: 1597577
+    },
+    pipelines: {
+        RU: 10848590,
+        KZ: 10863006
     }
 };
